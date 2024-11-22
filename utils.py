@@ -17,8 +17,8 @@ def get_conda_envs():
         print(f"Error fetching environments: {e}")
         return []
     
-def begin_training(controller):
-        print("\nAttempting to begin training...")
+def begin_training(controller, run_id):
+        print(f"\nAttempting to begin training with run-id: {run_id}")
 
         env = controller.selected_env
 
@@ -32,9 +32,6 @@ def begin_training(controller):
 
             return
 
-        
-
-    
 def activate_env(env):
     """Starts the selected virtual environment in a subprocess."""
 

@@ -159,7 +159,7 @@ class MainMenu(ctk.CTkFrame):
         self.start_button = ctk.CTkButton(
             self,
             text = "Start Training",
-            command = lambda: begin_training(self.controller)
+            command = self.enter_run_id
         )
         self.start_button.pack(pady=5)
 
@@ -169,3 +169,35 @@ class MainMenu(ctk.CTkFrame):
             command=lambda: controller.show_frame(controller.step2_frame)
         )
         self.back_button.pack(pady=5)
+
+    def enter_run_id(self):
+        run_id_popup = ctk.CTkToplevel(self)
+        run_id_popup.title("Enter Run ID")
+        run_id_popup.geometry("300x150")
+
+        label = ctk.CTkLabel(
+            run_id_popup,
+            text="Enter the run-id for this training session",
+            font=("Arial", 12)
+        )
+        label.pack(pady=10)
+
+        entry = ctk.CTkEntry(
+            run_id_popup,
+            width=250
+        )
+        entry.pack(pady=10)
+
+        def on_ok():
+            run_id = entry.get() # Retrieve user input
+            if run_id:
+                run_id_popup.destroy() # Close the popup after processing
+
+                begin_training(self.controller, run_id)
+
+        ok_button = ctk.CTkButton(
+            run_id_popup,
+            text="OK",
+            command=on_ok
+        )
+        ok_button.pack(pady=10)
