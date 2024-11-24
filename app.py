@@ -12,6 +12,7 @@ class MLAgentsApp(ctk.CTk):
         # Stores selected virtual env
         self.working_directory = None
         self.selected_env = None
+        self.current_training_process = None
 
         # Initialise frames
         self.step1_frame = Step1Frame(self, self)
