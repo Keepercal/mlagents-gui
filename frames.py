@@ -1,7 +1,7 @@
 import tkinter as tk
 import customtkinter as ctk
 from tkinter import filedialog, ttk
-from utils import get_conda_envs, activate_env, begin_training
+from utils import get_conda_envs, begin_training
 
 class Step1Frame(ctk.CTkFrame):
     def __init__(self, parent, controller):
@@ -35,6 +35,7 @@ class Step1Frame(ctk.CTkFrame):
         self.clear_button = ctk.CTkButton(
             self,
             text="Clear Directory",
+            state="disabled",
             command=self.clear_selection
         )
         self.clear_button.pack(pady=5)
@@ -54,22 +55,26 @@ class Step1Frame(ctk.CTkFrame):
 
         # If there is a directory
         if directory:
-            self.selected_directory = directory
-            self.step1_label.configure(text=f"Selected Directory: {self.selected_directory}")
+            self.controller.working_directory = directory
+
+            self.step1_label.configure(text=f"Selected Directory: {self.controller.working_directory}")
             self.next_button.configure(state="normal")
-            print(f"Selected Directory: {self.selected_directory}")
+            self.clear_button.configure(state="normal")
+
+            print(f"Working Directory: {self.controller.working_directory}")
         else:
             print("No directory selected.")
 
     # Clear the selected directory
     def clear_selection(self):
-        if self.selected_directory:
-            self.selected_directory = ""
+        if self.controller.working_directory:
+            self.contoller.working_directory = ""
+
             self.step1_label.configure(text="No directory selected")
             self.clear_button.configure(state="disabled")
             self.next_button.configure(state="disabled")
 
-            print("Selected directory cleared!")
+            print("Working directory cleared!")
         else:
             print("There is no directory to clear")
 
@@ -140,7 +145,7 @@ class Step2Frame(ctk.CTkFrame):
         """Handle the transition to the next frame"""
         #Save the selected env to the controller
         self.controller.selected_env = self.selected_env.get()
-        print(f"Selected Environment: {self.controller.selected_env}")
+        print(f"Using Virtual Environment: {self.controller.selected_env}")
 
         # Navigate to next frame
         self.controller.show_frame(self.controller.main_menu)
@@ -149,6 +154,8 @@ class MainMenu(ctk.CTkFrame):
     def __init__(self, parent, controller):
         super().__init__(parent)
         self.controller = controller
+
+        self.selected_config = ""
         
         self.greeting = ctk.CTkLabel(
             self,
@@ -158,8 +165,8 @@ class MainMenu(ctk.CTkFrame):
 
         self.start_button = ctk.CTkButton(
             self,
-            text = "Start Training",
-            command = self.enter_run_id
+            text = "Start New Training Session",
+            command = self.training_setup
         )
         self.start_button.pack(pady=5)
 
@@ -170,34 +177,107 @@ class MainMenu(ctk.CTkFrame):
         )
         self.back_button.pack(pady=5)
 
-    def enter_run_id(self):
-        run_id_popup = ctk.CTkToplevel(self)
-        run_id_popup.title("Enter Run ID")
-        run_id_popup.geometry("300x150")
+    def training_setup(self):
+        popup = ctk.CTkToplevel(self)
+        popup.title("Enter Run ID")
 
-        label = ctk.CTkLabel(
-            run_id_popup,
-            text="Enter the run-id for this training session",
+        label1 = ctk.CTkLabel(
+            popup,
+            text="Enter the Run ID for this training session",
             font=("Arial", 12)
         )
-        label.pack(pady=10)
+        label1.pack(pady=10)
 
-        entry = ctk.CTkEntry(
-            run_id_popup,
+        id_entry = ctk.CTkEntry(
+            popup,
             width=250
         )
-        entry.pack(pady=10)
+        id_entry.pack(pady=10)
 
-        def on_ok():
-            run_id = entry.get() # Retrieve user input
-            if run_id:
-                run_id_popup.destroy() # Close the popup after processing
-
-                begin_training(self.controller, run_id)
-
-        ok_button = ctk.CTkButton(
-            run_id_popup,
-            text="OK",
-            command=on_ok
+        label2 = ctk.CTkLabel(
+            popup,
+            text="Select the configuration file for this training session",
+            font=("Arial", 12)
         )
-        ok_button.pack(pady=10)
+
+        label2.pack(pady=10)
+
+        label3 = ctk.CTkLabel(
+            popup,
+            text="No config file selected",
+            font=("Arial", 12)
+        )
+
+        label3.pack(pady=10)
+
+        # Open config selection dialog
+        def select_config_file():
+            # Select config prompt
+            config = filedialog.askopenfilename(title="Select a Config file")
+
+            # If there is a config file
+            if config:
+                self.selected_config = config
+                label3.configure(text=f"Selected Config File: {self.selected_config}")
+                start_button.configure(state="normal")
+                clear_button.configure(state="normal")
+                print(f"Selected Config File: {self.selected_config}")
+            else:
+                print("No config file selected.")
+
+        select_button = ctk.CTkButton(
+            popup,
+            text="Select Config File",
+            command=select_config_file
+        )
+        select_button.pack(pady=5)
+
+        # Clear the selected config file
+        def clear_selection():
+            if self.selected_config:
+                self.selected_config = ""
+                label3.configure(text="No config file selected")
+                clear_button.configure(state="disabled")
+                start_button.configure(state="disabled")
+
+                print("Selected config file cleared!")
+            else:
+                print("There is no config file to clear")
+
+        clear_button = ctk.CTkButton(
+            popup,
+            text="Clear Config File",
+            state="disabled",
+            command=clear_selection
+        )
+        clear_button.pack(pady=5)
+
+        def on_start():
+            try:
+                run_id = id_entry.get() # Retrieve user input
+                if not run_id: # Validate the input
+                    raise ValueError("Run ID is empty. Please provide a valid Run ID.")
+                
+                # Close the popup after processing
+                if popup: # Ensure popup exists before destroying it
+                    popup.destroy()
+
+                # Begin training
+                begin_training(self.controller, run_id, self.selected_config)
+
+            except ValueError as ve:
+                print(f"ValueError: {ve}")
+
+            except AttributeError as ae:
+                print(f"AttributeError: {ae}")
+
+            except Exception as e:
+                print(f"An unexpected error occurred: {e}")
+
+        start_button = ctk.CTkButton(
+            popup,
+            text="Begin",
+            state="disabled",
+            command=on_start
+        )
+        start_button.pack(pady=10)

@@ -1,6 +1,5 @@
 import tkinter as tk
 import customtkinter as ctk
-import customtkinter
 from frames import Step1Frame, Step2Frame, MainMenu
 
 class MLAgentsApp(ctk.CTk):
@@ -11,6 +10,7 @@ class MLAgentsApp(ctk.CTk):
         #self.geometry("500x400")
 
         # Stores selected virtual env
+        self.working_directory = None
         self.selected_env = None
 
         # Initialise frames
