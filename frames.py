@@ -61,9 +61,9 @@ class Step1Frame(ctk.CTkFrame):
             self.next_button.configure(state="normal")
             self.clear_button.configure(state="normal")
 
-            print(f"Working Directory: {self.controller.working_directory}")
+            print(f"[INFO] Working Directory: {self.controller.working_directory}")
         else:
-            print("No directory selected.")
+            print("[ALERT] No directory selected.")
 
     # Clear the selected directory
     def clear_selection(self):
@@ -74,9 +74,9 @@ class Step1Frame(ctk.CTkFrame):
             self.clear_button.configure(state="disabled")
             self.next_button.configure(state="disabled")
 
-            print("Working directory cleared!")
+            print("[ALERT] Working directory cleared!")
         else:
-            print("There is no directory to clear")
+            print("[ALERT] There is no directory to clear")
 
 class Step2Frame(ctk.CTkFrame):
     def __init__(self, parent, controller):
@@ -145,7 +145,7 @@ class Step2Frame(ctk.CTkFrame):
         """Handle the transition to the next frame"""
         #Save the selected env to the controller
         self.controller.selected_env = self.selected_env.get()
-        print(f"Using Virtual Environment: {self.controller.selected_env}")
+        print(f"[INFO] Using Virtual Environment: {self.controller.selected_env}")
 
         # Navigate to next frame
         self.controller.show_frame(self.controller.main_menu)
@@ -221,9 +221,9 @@ class MainMenu(ctk.CTkFrame):
                 label3.configure(text=f"Selected Config File: {self.selected_config}")
                 start_button.configure(state="normal")
                 clear_button.configure(state="normal")
-                print(f"Selected Config File: {self.selected_config}")
+                print(f"[INFO] Selected Config File: {self.selected_config}")
             else:
-                print("No config file selected.")
+                print("[ALERT] No config file selected.")
 
         select_button = ctk.CTkButton(
             popup,
@@ -240,9 +240,9 @@ class MainMenu(ctk.CTkFrame):
                 clear_button.configure(state="disabled")
                 start_button.configure(state="disabled")
 
-                print("Selected config file cleared!")
+                print("[ALERT] Selected config file cleared!")
             else:
-                print("There is no config file to clear")
+                print("[ALERT] There is no config file to clear")
 
         clear_button = ctk.CTkButton(
             popup,

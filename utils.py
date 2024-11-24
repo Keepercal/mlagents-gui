@@ -19,7 +19,7 @@ def get_conda_envs():
             envs.append(env_name)
         return envs
     except Exception as e:
-        print(f"Error fetching environments: {e}")
+        print(f"[ERROR] Ran into issue fetching environments: {e}")
         return []
     
 def begin_training(controller, run_id, config_file):
@@ -33,7 +33,7 @@ def begin_training(controller, run_id, config_file):
         Returns:
             subprocess.Popen: The process object for the training session, or None if an error occurs.
         """
-        print(f"\nAttempting to begin training with run-id: {run_id}")
+        print(f"\n[ALERT] Attempting to begin training with run-id: {run_id}")
 
         env = controller.selected_env
         working_dir = controller.working_directory # The selected ml-agents working directory
@@ -41,7 +41,7 @@ def begin_training(controller, run_id, config_file):
         run_id_path = os.path.join(results_dir, run_id) # Contruct the full path for the run_id
 
         if not env: # Check if the environment is valid
-            print("Error: No environment selected for training!")
+            print("[ERROR] No environment selected for training!")
             return
         
         # Check if the directory exists
@@ -54,11 +54,11 @@ def begin_training(controller, run_id, config_file):
                 detail=f'Do you want to force start training and overwrite the previous result?',
             )
             if not overwrite:
-                print("Training session cancelled by the user.")
+                print("[ALERT] Training session cancelled by the user.")
                 return
 
             # User chose to overwrite, add the --force flag
-            print("User chose to overwrite. Adding --force flag")
+            print("[INFO] User chose to overwrite. Adding --force flag")
             force_flag = "--force"
 
         try:
@@ -74,7 +74,8 @@ def begin_training(controller, run_id, config_file):
                 cwd=controller.working_directory,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                text=True
+                text=True,
+                preexec_fn=os.setsid
             )
 
             # Use a seperate thread to read subprocess output
@@ -83,11 +84,11 @@ def begin_training(controller, run_id, config_file):
             # Store the process in the controller
             controller.current_training_process = process
 
-            print(f"Training started with run-id: {run_id}")
+            print(f"[ALERT] Training started with run-id: {run_id}")
             return process
 
         except Exception as e:
-            print("Error", f"Failed to begin training. \n\n{str(e)}")
+            print(f"[ERROR] Failed to begin training. \n\n{str(e)}")
 
             if env:
                 deactivate_env(env, process)
@@ -103,7 +104,7 @@ def create_output_popup(controller, run_id):
 
     label = ctk.CTkLabel(
         popup,
-        text=f'Training output for session: {run_id}',
+        text=f'Training session "{run_id}" initialised, press play in the Unity editor to begin training',
         font=("Arial", 14)
     )
     label.pack(pady=10)
@@ -118,47 +119,71 @@ def create_output_popup(controller, run_id):
 
     def end_training():
         """Signals to end the training session."""
-        process = getattr(controller, 'current_training_process', None) 
+        print(f"[ALERT] Attempting to terminate training session, stand by...")
+
+        text_widget.insert(
+                    tk.END,
+                    "\n[CTRL Panel] Attempting to terminate training session, stand by...\n"
+                )
+        
+        process = getattr(controller, 'current_training_process', None)
 
         if process and process.poll() is None:
             try:
-                process.send_signal(signal.SIGINT) # Send SIGINT to terminate the process
-                process.wait(timeout=5) # Allow a short period for graceful termination
-
-                print("Attempting to terminate training session gracefully...")
+                # Attempt graceful termination with SIGINT
+                try:
+                    print("[INFO] Terminating the process group with SIGINT...")
+                    os.killpg(os.getpgid(process.pid), signal.SIGINT) # Send SIGINT to terminate the process
+                    process.wait(timeout=15)
+                except subprocess.TimeoutExpired:
+                    print("[WARNING] Process group did not terminate within timeout, forcing termination...")
+                except Exception as e:
+                    print(f"[ERROR] Failed to send SIGINT: {e}")
                 
                 # If process hasn't ended, forcefully terminate it
                 if process.poll() is None:
-                    print("Process not terminated gracefully, forcing termination...")
-                    process.terminate() # Send SIGTERM to terminate gracefully (less aggressive)
-                    process.wait(timeout=15)
+                    try:
+                        print("[INFO] Sending SIGTERM to process group...")
+                        os.killpg(os.getpgid(process.pid), signal.SIGTERM) # Send SIGTERM to terminate gracefully (less aggressive)
+                        process.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        print("[WARNING] Process group did not terminate within 5 seconds after SIGTERM.")
+                    except Exception as e:
+                        print(f"[ERROR] Failed to send SIGTERM: {e}")
 
                 # If the process still hasn't terminated, kill it
                 if process.poll() is None:
-                    print("Process still running, killing it...")
-                    process.kill()
+                    try:
+                        print("[INFO] Forcing process group termination with SIGKILL...")
+                        os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+                    except Exception as e:
+                        print(f"[ERROR] Failed to kill process: {e}")
 
-                print("Training session terminated.")
-
-                text_widget.insert(
+                # Process terminated successfully
+                print("[SUCCESS] Training session terminated.")
+                text_widget.after(
+                    0,
+                    text_widget.insert,
                     tk.END,
-                    "\n Training session terminated.\n"
+                    "\n[CTRL Panel] Training session terminated.\n"
                 )
 
-                end_button.configure(state="disabled")
-                close_button.configure(state="normal")
+                end_button.after(0, lambda: end_button.configure(state="disabled"))
+                close_button.after(0, lambda: close_button.configure(state="normal"))
 
             except Exception as e:
-                print(f"Failed to terminate training session: {e}")
-                text_widget.insert(
+                print(f"[ERROR] Failed to terminate training session: {e}")
+                text_widget.after(
+                    0,
+                    text_widget.insert,
                     tk.END,
-                    f"\nError terminating session: {e}\n"
+                    f"\n[ERROR] Encountered a problem terminating session: {e}\n"
                 )
         else:
-            print("No active training session to terminate.")
+            print("[ERROR] No active training session to terminate.")
             text_widget.insert(
                 tk.END,
-                "\nNo active training session to terminate.\n"
+                "\n[CTRL Panel] No active training session to terminate.\n"
             )
 
     end_button = ctk.CTkButton(
@@ -197,22 +222,22 @@ def stream_process_output(process, text_widget):
             text_widget.after(0, append_text, line)
     
     # Mark process as finished
-    text_widget.after(0, append_text, "\n[Training Session Ended]\n")
+    text_widget.after(0, append_text, "\n[CTRL Panel] Training Session Ended\n")
 
 def deactivate_env(env, process):
     "Deactivates the selected virtual environment in a subprocess"
 
     if not env: # If there is no environment inside env
-        print("There is no environment to deactivate...")
+        print("[ERROR] There is no environment to deactivate!")
         return
     
-    print(f"Attempting to deactivate virtual environment: {env}\n")
+    print(f"[ALERT] Attempting to deactivate virtual environment: {env}\n")
 
     try:
         command = f"conda deactivate && conda info --envs"
         subprocess.Popen(command, shell=True)
 
-        print(f'Virtual environment "{env}" is now deactivated')
+        print(f'[INFO] Virtual environment "{env}" is now deactivated')
 
     except Exception as e:
-        messagebox.showerror("Error", f"Failed to deactivate the environment.\n\n{str(e)}")
+        messagebox.showerror(f"[ERROR] Failed to deactivate the environment.\n\n{str(e)}")
