@@ -1,7 +1,7 @@
 import tkinter as tk
 import customtkinter as ctk
 from tkinter import filedialog, ttk
-from utils import get_conda_envs, begin_training
+from utils import get_conda_envs, begin_training, save_settings
 
 class Step1Frame(ctk.CTkFrame):
     def __init__(self, parent, controller):
@@ -55,35 +55,35 @@ class Step1Frame(ctk.CTkFrame):
 
         # If there is a directory
         if directory:
-            self.controller.working_directory = directory
+            self.controller.working_dir = directory
 
-            self.step1_label.configure(text=f"Selected Directory: {self.controller.working_directory}")
+            self.step1_label.configure(text=f"Selected Directory: {self.controller.working_dir}")
             self.next_button.configure(state="normal")
             self.clear_button.configure(state="normal")
 
-            print(f"[INFO] Working Directory: {self.controller.working_directory}")
+            print(f"    Selected Directory: {self.controller.working_dir}")
         else:
             print("[ALERT] No directory selected.")
 
     # Clear the selected directory
     def clear_selection(self):
-        if self.controller.working_directory:
-            self.contoller.working_directory = ""
+        if self.controller.working_dir:
+            self.controller.working_dir = ""
 
             self.step1_label.configure(text="No directory selected")
             self.clear_button.configure(state="disabled")
             self.next_button.configure(state="disabled")
 
-            print("[ALERT] Working directory cleared!")
+            print("    [ALERT] Working directory cleared!")
         else:
-            print("[ALERT] There is no directory to clear")
+            print("    [ALERT] There is no directory to clear")
 
 class Step2Frame(ctk.CTkFrame):
     def __init__(self, parent, controller):
         super().__init__(parent)
         self.controller = controller
 
-        self.selected_env = tk.StringVar()
+        self.virtual_env = tk.StringVar()
 
         self.greeting = ctk.CTkLabel(
             self,
@@ -106,7 +106,7 @@ class Step2Frame(ctk.CTkFrame):
                 self,
                 values=conda_envs,
                 state="readonly",
-                textvariable=self.selected_env
+                textvariable=self.virtual_env
             )
             self.env_dropdown.set("Select Conda Environment")
             self.env_dropdown.pack(pady=10)
@@ -120,13 +120,13 @@ class Step2Frame(ctk.CTkFrame):
             )
             env_dropdown.pack(pady=10)
 
-        self.next_button = ctk.CTkButton(
+        self.save_button = ctk.CTkButton(
             self,
-            text = "Next",
+            text = "Save & Continue",
             state = "disabled",
             command = self.go_to_next
         )
-        self.next_button.pack(pady=5)
+        self.save_button.pack(pady=5)
 
         self.back_button = ctk.CTkButton(
             self,
@@ -137,15 +137,16 @@ class Step2Frame(ctk.CTkFrame):
 
     def on_env_selected(self, event):
         # Enable the next button when a valid env is selected
-        selected = self.selected_env.get()
+        selected = self.virtual_env.get()
         if selected and selected != "Select Conda Environment":
-            self.next_button.configure(state="normal")
+            self.save_button.configure(state="normal")
 
     def go_to_next(self):
-        """Handle the transition to the next frame"""
-        #Save the selected env to the controller
-        self.controller.selected_env = self.selected_env.get()
-        print(f"[INFO] Using Virtual Environment: {self.controller.selected_env}")
+        """Save the user settings and handle the transition to the next frame"""
+        self.controller.virtual_env = self.virtual_env.get() #Save the selected env to the controller
+        print(f"    Selected Virtual Environment: {self.controller.virtual_env}")
+        
+        save_settings(self.controller)
 
         # Navigate to next frame
         self.controller.show_frame(self.controller.main_menu)
@@ -240,9 +241,9 @@ class MainMenu(ctk.CTkFrame):
                 clear_button.configure(state="disabled")
                 start_button.configure(state="disabled")
 
-                print("[ALERT] Selected config file cleared!")
+                print("    [ALERT] Selected config file cleared!")
             else:
-                print("[ALERT] There is no config file to clear")
+                print("    [ALERT] There is no config file to clear")
 
         clear_button = ctk.CTkButton(
             popup,

@@ -6,6 +6,50 @@ import os
 import threading
 import signal
 import select
+import json
+
+CONFIG_FILE = "config.json"
+
+def load_settings(controller):
+    """ Loads user settings from JSON file, if one exists"""
+
+    print("[ALERT] Trying to load saved settings...")
+
+    if os.path.exists(CONFIG_FILE):
+        print("    Settings file found! Skipping setup.")
+        try:
+            with open(CONFIG_FILE, 'r') as f:
+                settings = json.load(f)
+
+                controller.working_dir = settings.get("working_dir", "")
+                controller.virtual_env = settings.get("virtual_env", "")
+
+                print(f"        working_dir: {controller.working_dir}"),
+                print(f"        virtual_env: {controller.virtual_env}")
+        except Exception as e:
+            messagebox.showerror(
+                title="Error!",
+                message=f"Failed to load settings: {e}"
+            )
+    else:
+        print("    [INFO] No settings file found. Proceeding with setup.")
+        return None
+
+def save_settings(controller):
+    settings = {
+        "working_dir": controller.working_dir,
+        "virtual_env": controller.virtual_env
+    }
+    try:
+        with open(CONFIG_FILE, 'w') as f:
+            json.dump(settings, f, indent=4)
+        messagebox.showinfo("Saved", "Settings have been saved successfully!")
+
+        print("[SUCCESS] Settings have been saved for future use!")
+        print(f"    working_dir: {controller.working_dir}")
+        print(f"    virtual_env: {controller.virtual_env}")
+    except Exception as e:
+        messagebox.showerror("Error", f"Failed to save settings: {e}")
 
 def get_conda_envs():
     # Fetch a list of Conda environments
@@ -35,8 +79,8 @@ def begin_training(controller, run_id, config_file):
         """
         print(f"\n[ALERT] Attempting to begin training with run-id: {run_id}")
 
-        env = controller.selected_env
-        working_dir = controller.working_directory # The selected ml-agents working directory
+        env = controller.virtual_env
+        working_dir = controller.working_dir # The selected ml-agents working directory
         results_dir = f"{working_dir}/results" # Base directory for results
         run_id_path = os.path.join(results_dir, run_id) # Contruct the full path for the run_id
 
@@ -47,6 +91,8 @@ def begin_training(controller, run_id, config_file):
         # Check if the directory exists
         force_flag = ""
         if os.path.exists(run_id_path) and os.path.isdir(run_id_path):
+            print(f'    [INFO] Previous result found with Run ID "{run_id}". Overwrite?')
+
             # Show an alert window to confirm overwriting
             overwrite = messagebox.askyesno(
                 "Existing Run-ID",
@@ -54,11 +100,11 @@ def begin_training(controller, run_id, config_file):
                 detail=f'Do you want to force start training and overwrite the previous result?',
             )
             if not overwrite:
-                print("[ALERT] Training session cancelled by the user.")
+                print("    [ALERT] Training session cancelled by the user.")
                 return
 
             # User chose to overwrite, add the --force flag
-            print("[INFO] User chose to overwrite. Adding --force flag")
+            print("    [INFO] User chose to overwrite. Adding --force flag")
             force_flag = "--force"
 
         try:
@@ -71,7 +117,7 @@ def begin_training(controller, run_id, config_file):
             process = subprocess.Popen(
                 command,
                 shell=True,
-                cwd=controller.working_directory,
+                cwd=controller.working_dir,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
@@ -84,11 +130,11 @@ def begin_training(controller, run_id, config_file):
             # Store the process in the controller
             controller.current_training_process = process
 
-            print(f"[ALERT] Training started with run-id: {run_id}")
+            print(f"    [ALERT] Training started with run-id: {run_id}")
             return process
 
         except Exception as e:
-            print(f"[ERROR] Failed to begin training. \n\n{str(e)}")
+            print(f"    [ERROR] Failed to begin training. \n\n{str(e)}")
 
             if env:
                 deactivate_env(env, process)
@@ -119,7 +165,7 @@ def create_output_popup(controller, run_id):
 
     def end_training():
         """Signals to end the training session."""
-        print(f"[ALERT] Attempting to terminate training session, stand by...")
+        print(f"    [ALERT] Attempting to terminate training session, stand by...")
 
         text_widget.insert(
                     tk.END,
@@ -132,35 +178,35 @@ def create_output_popup(controller, run_id):
             try:
                 # Attempt graceful termination with SIGINT
                 try:
-                    print("[INFO] Terminating the process group with SIGINT...")
+                    print("    [INFO] Terminating the process group with SIGINT...")
                     os.killpg(os.getpgid(process.pid), signal.SIGINT) # Send SIGINT to terminate the process
                     process.wait(timeout=15)
                 except subprocess.TimeoutExpired:
-                    print("[WARNING] Process group did not terminate within timeout, forcing termination...")
+                    print("    [WARNING] Process group did not terminate within timeout, forcing termination...")
                 except Exception as e:
-                    print(f"[ERROR] Failed to send SIGINT: {e}")
+                    print(f"    [ERROR] Failed to send SIGINT: {e}")
                 
                 # If process hasn't ended, forcefully terminate it
                 if process.poll() is None:
                     try:
-                        print("[INFO] Sending SIGTERM to process group...")
+                        print("    [INFO] Sending SIGTERM to process group...")
                         os.killpg(os.getpgid(process.pid), signal.SIGTERM) # Send SIGTERM to terminate gracefully (less aggressive)
                         process.wait(timeout=5)
                     except subprocess.TimeoutExpired:
-                        print("[WARNING] Process group did not terminate within 5 seconds after SIGTERM.")
+                        print("    [WARNING] Process group did not terminate within 5 seconds after SIGTERM.")
                     except Exception as e:
-                        print(f"[ERROR] Failed to send SIGTERM: {e}")
+                        print(f"    [ERROR] Failed to send SIGTERM: {e}")
 
                 # If the process still hasn't terminated, kill it
                 if process.poll() is None:
                     try:
-                        print("[INFO] Forcing process group termination with SIGKILL...")
+                        print("    [INFO] Forcing process group termination with SIGKILL...")
                         os.killpg(os.getpgid(process.pid), signal.SIGKILL)
                     except Exception as e:
-                        print(f"[ERROR] Failed to kill process: {e}")
+                        print(f"    [ERROR] Failed to kill process: {e}")
 
                 # Process terminated successfully
-                print("[SUCCESS] Training session terminated.")
+                print(f"    [SUCCESS] Training session terminated.")
                 text_widget.after(
                     0,
                     text_widget.insert,
