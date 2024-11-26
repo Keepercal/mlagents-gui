@@ -8,17 +8,17 @@ import signal
 import select
 import json
 
-CONFIG_FILE = "config.json"
+SETTINGS_FILE = "settings.json"
 
 def load_settings(controller):
     """ Loads user settings from JSON file, if one exists"""
 
     print("[ALERT] Trying to load saved settings...")
 
-    if os.path.exists(CONFIG_FILE):
+    if os.path.exists(SETTINGS_FILE):
         print("    Settings file found! Skipping setup.")
         try:
-            with open(CONFIG_FILE, 'r') as f:
+            with open(SETTINGS_FILE, 'r') as f:
                 settings = json.load(f)
 
                 controller.working_dir = settings.get("working_dir", "")
@@ -41,7 +41,7 @@ def save_settings(controller):
         "virtual_env": controller.virtual_env
     }
     try:
-        with open(CONFIG_FILE, 'w') as f:
+        with open(SETTINGS_FILE, 'w') as f:
             json.dump(settings, f, indent=4)
         messagebox.showinfo("Saved", "Settings have been saved successfully!")
 
@@ -66,13 +66,13 @@ def get_conda_envs():
         print(f"[ERROR] Ran into issue fetching environments: {e}")
         return []
     
-def begin_training(controller, run_id, config_file):
+def begin_training(controller, run_id, SETTINGS_FILE):
         """Begins a new training session in a subprocess
 
         Args:
             controller (MLAgentsApp): The main application instance that acts as the controller for managing the application's state and navigation.
             run_id (str): The ID for the training session.
-            config_file (str): The path to the configuation file for the training session.
+            SETTINGS_FILE (str): The path to the configuation file for the training session.
         
         Returns:
             subprocess.Popen: The process object for the training session, or None if an error occurs.
@@ -109,7 +109,7 @@ def begin_training(controller, run_id, config_file):
 
         try:
             # Command to run the training session
-            command = f"source activate base && conda activate {env} && mlagents-learn {config_file} --run-id={run_id} {force_flag}"
+            command = f"source activate base && conda activate {env} && mlagents-learn {SETTINGS_FILE} --run-id={run_id} {force_flag}"
 
             # Create the popup to show training output
             output_popup = create_output_popup(controller, run_id)

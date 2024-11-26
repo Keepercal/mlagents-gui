@@ -4,13 +4,31 @@ from tkinter import filedialog, ttk
 from utils import get_conda_envs, begin_training, save_settings
 
 class Step1Frame(ctk.CTkFrame):
+    """ Step 1 of setting up the CTRL panel. User chooses their working directory (their ML-Agents clone)
+
+    Args:
+        ctk (CTkFrame): The base class for creating a CustomTkinter frame, providing the functionality 
+        to organize and manage widgets within a frame in the application.
+    """
     def __init__(self, parent, controller):
+        """ Initialises the frame and its components
+
+        Args:
+            parent (tk.Widget): The parent widget which the frame belongs to.
+            controller (MLAgentsApp): The application controller, used for navigating between frames
+        """
         super().__init__(parent)
         self.controller = controller
-
         self.selected_directory = ""
 
-        # UI components
+        self.initialise_ui(controller)
+
+    def initialise_ui(self, controller):
+        """ Initialises the UI components of this frame.
+
+        Args:
+            controller (MLAgentsApp): The application's controller, used for navigating between frames.
+        """
         self.greeting = ctk.CTkLabel(
             self,
             text="Select your ML-Agents directory",
@@ -48,9 +66,8 @@ class Step1Frame(ctk.CTkFrame):
         )
         self.next_button.pack(pady=5)
     
-    # Open directory selection dialog
     def select_directory(self):
-        # Select directory prompt
+        """ Prompts the user to select their ML-Agents working directory """
         directory = filedialog.askdirectory(title="Select a Directory")
 
         # If there is a directory
@@ -65,8 +82,8 @@ class Step1Frame(ctk.CTkFrame):
         else:
             print("[ALERT] No directory selected.")
 
-    # Clear the selected directory
     def clear_selection(self):
+        """ Clears the given working directory """
         if self.controller.working_dir:
             self.controller.working_dir = ""
 
@@ -79,12 +96,32 @@ class Step1Frame(ctk.CTkFrame):
             print("    [ALERT] There is no directory to clear")
 
 class Step2Frame(ctk.CTkFrame):
+    """ Step 2 of setting up the CTRL panel. User chooses their working virtual environment
+
+    Args:
+        ctk (CTkFrame): The base class for creating a CustomTkinter frame, providing the functionality 
+        to organize and manage widgets within a frame in the application.
+    """
     def __init__(self, parent, controller):
+        """ Initialises the frame and its components
+
+        Args:
+            parent (tk.Widget): The parent widget which the frame belongs to.
+            controller (MLAgentsApp): The application controller, used for navigating between frames
+        """
         super().__init__(parent)
         self.controller = controller
 
         self.virtual_env = tk.StringVar()
 
+        self.initialise_ui(controller)
+
+    def initialise_ui(self, controller):
+        """ Initialises the UI components of this frame.
+
+        Args:
+            controller (MLAgentsApp): The application's controller, used for navigating between frames.
+        """
         self.greeting = ctk.CTkLabel(
             self,
             text="Select Virtual Environment",
@@ -135,8 +172,8 @@ class Step2Frame(ctk.CTkFrame):
         )
         self.back_button.pack(pady=5)
 
-    def on_env_selected(self, event):
-        # Enable the next button when a valid env is selected
+    def on_env_selected(self):
+        """ Enables the save button to be clickable when a virtual environment is selected. """
         selected = self.virtual_env.get()
         if selected and selected != "Select Conda Environment":
             self.save_button.configure(state="normal")
@@ -152,12 +189,31 @@ class Step2Frame(ctk.CTkFrame):
         self.controller.show_frame(self.controller.main_menu)
 
 class MainMenu(ctk.CTkFrame):
+    """ The main menu of the application.
+
+    Args:
+        ctk (CTkFrame): The base class for creating a CustomTkinter frame, providing the functionality 
+        to organize and manage widgets within a frame in the application.
+    """
     def __init__(self, parent, controller):
+        """ Initialises the frame and its components
+
+        Args:
+            parent (tk.Widget): The parent widget which the frame belongs to.
+            controller (MLAgentsApp): The application controller, used for navigating between frames
+        """
         super().__init__(parent)
         self.controller = controller
-
         self.selected_config = ""
+
+        self.initialise_ui(controller)
         
+    def initialise_ui(self, controller):
+        """ Initialises the UI components of this frame.
+
+        Args:
+            controller (MLAgentsApp): The application's controller, used for navigating between frames.
+        """
         self.greeting = ctk.CTkLabel(
             self,
             text="ML-Agents Control Panel",
@@ -179,6 +235,7 @@ class MainMenu(ctk.CTkFrame):
         self.back_button.pack(pady=5)
 
     def training_setup(self):
+        """ Creates a popup window where the user can enter a name for the training session and select a config file"""
         popup = ctk.CTkToplevel(self)
         popup.title("Enter Run ID")
 
@@ -211,8 +268,8 @@ class MainMenu(ctk.CTkFrame):
 
         label3.pack(pady=10)
 
-        # Open config selection dialog
         def select_config_file():
+            """ Prompts the user to select a config.yaml file"""
             # Select config prompt
             config = filedialog.askopenfilename(title="Select a Config file")
 
@@ -233,8 +290,8 @@ class MainMenu(ctk.CTkFrame):
         )
         select_button.pack(pady=5)
 
-        # Clear the selected config file
         def clear_selection():
+            """ Clears the selected config file """
             if self.selected_config:
                 self.selected_config = ""
                 label3.configure(text="No config file selected")
@@ -254,6 +311,7 @@ class MainMenu(ctk.CTkFrame):
         clear_button.pack(pady=5)
 
         def on_start():
+            """ Executes when the user presses the begin button."""
             try:
                 run_id = id_entry.get() # Retrieve user input
                 if not run_id: # Validate the input
