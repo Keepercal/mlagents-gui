@@ -15,7 +15,6 @@ class MLAgentsApp(ctk.CTk):
         creating modern and customisable GUI applications.
     """
     def __init__(self):
-        # Main window setup
         super().__init__()
         self.setup_main_window()
         self.initialise_variables()
