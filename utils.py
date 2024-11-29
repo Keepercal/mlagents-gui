@@ -15,37 +15,31 @@ SETTINGS_FILE = "settings.json"
 
 def load_settings(controller):
     """ Loads user settings from JSON file, if one exists"""
-
     print("[ALERT] Trying to load saved settings...")
+        
+    try:
+        with open(SETTINGS_FILE, 'r') as f:
+            settings = json.load(f)
 
-    if os.path.exists(SETTINGS_FILE):
-        print("    Settings file found! Skipping setup.")
-        try:
-            with open(SETTINGS_FILE, 'r') as f:
-                settings = json.load(f)
+            controller.mlagents_dir = settings.get("mlagents_dir", "")
+            controller.virtual_env = settings.get("virtual_env", "")
 
-                controller.working_dir = settings.get("working_dir", "")
-                controller.virtual_env = settings.get("virtual_env", "")
-
-                print(f"        working_dir: {controller.working_dir}"),
-                print(f"        virtual_env: {controller.virtual_env}")
-        except Exception as e:
-            messagebox.showerror(
-                title="Error!",
-                message=f"Failed to load settings: {e}"
-            )
-    else:
-        print("    [INFO] No settings file found. Proceeding with setup.")
-        return None
+            print(f"        mlagents_dir: {controller.mlagents_dir}"),
+            print(f"        virtual_env: {controller.virtual_env}")
+    except Exception as e:
+        messagebox.showerror(
+            title="Error!",
+            message=f"Failed to load settings: {e}"
+        )
 
 def save_settings(controller):
     """ Saves the neccesary settings for loading a training session.
 
     Args:
-        controller (MLAgentsApp): The application controller, used for accessing application variables.
+        controller (MLAgentsCTRL): The application controller, used for accessing application variables.
     """
     settings = {
-        "working_dir": controller.working_dir,
+        "mlagents_dir": controller.mlagents_dir,
         "virtual_env": controller.virtual_env
     }
     try:
@@ -54,7 +48,7 @@ def save_settings(controller):
         messagebox.showinfo("Saved", "Settings have been saved successfully!")
 
         print("[SUCCESS] Settings have been saved for future use!")
-        print(f"    working_dir: {controller.working_dir}")
+        print(f"    mlagents_dir: {controller.mlagents_dir}")
         print(f"    virtual_env: {controller.virtual_env}")
     except Exception as e:
         messagebox.showerror("Error", f"Failed to save settings: {e}")
@@ -66,7 +60,7 @@ def initialise_process(controller, command):
     """ Intialises a new training session process
 
     Args:
-        controller (MLAgentsApp): The application controller, used for accessing application variables.
+        controller (MLAgentsCTRL): The application controller, used for accessing application variables.
         command (str): The command to execute in the process.
 
     Returns:
@@ -75,7 +69,8 @@ def initialise_process(controller, command):
     process = subprocess.Popen(
                 command,
                 shell=True,
-                cwd=controller.working_dir,
+                executable="/bin/bash",
+                cwd=controller.mlagents_dir,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
@@ -121,17 +116,46 @@ def end_training_process(process):
 # =====================================================================
 # VIRTUAL ENVIRONMENT HANDLING: Handles logic relating to virtual environments.
 # =====================================================================
-def get_conda_envs():
+def get_conda_exe(conda_dir):
+    """ Given the selected Anaconda installation directory, return the full path to the conda executable.
+
+    Args:
+        conda_dir (str): A string of the path to the user's conda installation.
+    """
+    # Check for conda in common subdirectories
+    if os.name == 'nt': # Windows
+        conda_exe = os.path.join(conda_dir, "Scripts", "conda.exe")
+        print("[INFO] User's system identified as Windows")
+    else: # macOS/Linux
+        conda_exe = os.path.join(conda_dir, "bin", "conda")
+        print("[INFO] User's systen identified as MacOS or Linux")
+    
+    if not os.path.isfile(conda_exe):
+        raise FileNotFoundError(f"  [ERROR]: Conda executable not found at {conda_exe}")
+    else:
+        print(f"    [INFO] Found conda executable at {conda_exe}")
+        return conda_exe
+
+def get_conda_envs(conda_exe):
     # Fetch a list of Conda environments
     try:
-        result = subprocess.run(["conda", "env", "list"], stdout=subprocess.PIPE, text=True)
+        result = subprocess.run([conda_exe, "env", "list"], capture_output=True, text=True)
+
+        if result.returncode != 0:
+            raise RuntimeError(f"[ERROR] Error fetching Conda Environments: {result.stderr}")
+        
         envs = []
         for line in result.stdout.splitlines():
             if line.startswith("#") or not line.strip():
                 continue
-            env_name = line.split()[0]
-            envs.append(env_name)
+
+            # Split the line into columns to get the envirobments
+            parts = line.split()
+            if len(parts) >= 2:
+                env_name = parts[0]
+                envs.append(env_name)
         return envs
+    
     except Exception as e:
         print(f"[ERROR] Ran into issue fetching environments: {e}")
         return []
@@ -159,7 +183,7 @@ def begin_training(controller, run_id, SETTINGS_FILE):
         """Begins a new training session in a subprocess
 
         Args:
-            controller (MLAgentsApp): The main application instance that acts as the controller for managing the application's state and navigation.
+            controller (MLAgentsCTRL): The main application instance that acts as the controller for managing the application's state and navigation.
             run_id (str): The ID for the training session.
             SETTINGS_FILE (str): The path to the configuation file for the training session.
         
@@ -169,8 +193,8 @@ def begin_training(controller, run_id, SETTINGS_FILE):
         print(f"\n[ALERT] Attempting to begin training with run-id: {run_id}")
 
         env = controller.virtual_env
-        working_dir = controller.working_dir # The selected ml-agents working directory
-        results_dir = f"{working_dir}/results" # Base directory for results
+        mlagents_dir = controller.mlagents_dir # The selected ml-agents working directory
+        results_dir = f"{mlagents_dir}/results" # Base directory for results
         run_id_path = os.path.join(results_dir, run_id) # Contruct the full path for the run_id
 
         if not env: # Check if the environment is valid
@@ -198,12 +222,16 @@ def begin_training(controller, run_id, SETTINGS_FILE):
 
         try:
             # Command to run the training session
-            command = f"source activate base && conda activate {env} && mlagents-learn {SETTINGS_FILE} --run-id={run_id} {force_flag}"
+            command = f"conda init && conda activate {env} && mlagents-learn {SETTINGS_FILE} --run-id={run_id} {force_flag}"
 
             # Create the popup to show training output
             output_popup = create_output_popup(controller, run_id)
 
             process = initialise_process(controller, command)
+
+            if process is None:
+                print(f"[ERROR] Failed to initialise process with command: {command}")
+                return None
 
             # Use a seperate thread to read subprocess output
             threading.Thread(target=stream_process_output, args=(process, output_popup), daemon=True).start()
@@ -230,7 +258,7 @@ def create_output_popup(controller, run_id):
     """ Creates a popup window displaying the training terminal and begins a training session.
 
     Args:
-        controller (MLAgentsApp): The application controller, used for passing application variables.
+        controller (MLAgentsCTRL): The application controller, used for passing application variables.
         run_id (str): The Run ID for the new training session.
 
     Returns:

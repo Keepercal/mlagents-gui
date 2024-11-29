@@ -1,7 +1,7 @@
 import tkinter as tk
 import customtkinter as ctk
 from tkinter import filedialog, ttk
-from utils import get_conda_envs, begin_training, save_settings
+from utils import get_conda_envs, begin_training, save_settings, get_conda_exe
 
 class Step1Frame(ctk.CTkFrame):
     """ Step 1 of setting up the CTRL panel. User chooses their working directory (their ML-Agents clone)
@@ -15,7 +15,7 @@ class Step1Frame(ctk.CTkFrame):
 
         Args:
             parent (tk.Widget): The parent widget which the frame belongs to.
-            controller (MLAgentsApp): The application controller, used for navigating between frames
+            controller (MLAgentsCTRL): The application controller, used for navigating between frames
         """
         super().__init__(parent)
         self.controller = controller
@@ -27,7 +27,7 @@ class Step1Frame(ctk.CTkFrame):
         """ Initialises the UI components of this frame.
 
         Args:
-            controller (MLAgentsApp): The application's controller, used for navigating between frames.
+            controller (MLAgentsCTRL): The application's controller, used for navigating between frames.
         """
         self.greeting = ctk.CTkLabel(
             self,
@@ -36,12 +36,12 @@ class Step1Frame(ctk.CTkFrame):
         )
         self.greeting.pack(pady=10)
 
-        self.step1_label = ctk.CTkLabel(
+        self.info_label = ctk.CTkLabel(
             self, 
             text="No directory selected",
             font=("Arial", 10)
         )
-        self.step1_label.pack(pady=10)
+        self.info_label.pack(pady=10)
 
         self.select_button = ctk.CTkButton(
             self,
@@ -68,26 +68,26 @@ class Step1Frame(ctk.CTkFrame):
     
     def select_directory(self):
         """ Prompts the user to select their ML-Agents working directory """
-        directory = filedialog.askdirectory(title="Select a Directory")
+        mlagents_directory = filedialog.askdirectory(title="Select a Directory")
 
         # If there is a directory
-        if directory:
-            self.controller.working_dir = directory
+        if mlagents_directory:
+            self.controller.mlagents_dir = mlagents_directory
 
-            self.step1_label.configure(text=f"Selected Directory: {self.controller.working_dir}")
+            self.info_label.configure(text=f"Selected Directory: {self.controller.mlagents_dir}")
             self.next_button.configure(state="normal")
             self.clear_button.configure(state="normal")
 
-            print(f"    Selected Directory: {self.controller.working_dir}")
+            print(f"    Selected Directory: {self.controller.mlagents_dir}")
         else:
             print("[ALERT] No directory selected.")
 
     def clear_selection(self):
         """ Clears the given working directory """
-        if self.controller.working_dir:
-            self.controller.working_dir = ""
+        if self.controller.mlagents_dir:
+            self.controller.mlagents_dir = ""
 
-            self.step1_label.configure(text="No directory selected")
+            self.info_label.configure(text="No directory selected")
             self.clear_button.configure(state="disabled")
             self.next_button.configure(state="disabled")
 
@@ -96,7 +96,116 @@ class Step1Frame(ctk.CTkFrame):
             print("    [ALERT] There is no directory to clear")
 
 class Step2Frame(ctk.CTkFrame):
-    """ Step 2 of setting up the CTRL panel. User chooses their working virtual environment
+    """ Step 2 of setting up the CTRL panel. User chooses their Anaconda installation
+
+    Args:
+        ctk (CTkFrame): The base class for creating a CustomTkinter frame, providing the functionality 
+        to organize and manage widgets within a frame in the application.
+    """
+    def __init__(self, parent, controller):
+        super().__init__(parent)
+        self.controller = controller
+        self.selected_conda_dir = ""
+
+        self.initialise_ui(controller)
+
+    def initialise_ui(self, controller):
+        """ Initialises the UI components of this frame.
+
+        Args:
+            controller (MLAgentsCTRL): The application's controller, used for navigating between frames.
+        """
+        self.greeting = ctk.CTkLabel(
+            self,
+            text="Select your Anaconda installation",
+            font=("Arial", 14)
+        )
+        self.greeting.pack(pady=10)
+
+        self.info_label = ctk.CTkLabel(
+            self, 
+            text="No installation selected",
+            font=("Arial", 10)
+        )
+        self.info_label.pack(pady=10)
+
+        self.select_button = ctk.CTkButton(
+            self,
+            text="Select Installation",
+            command=self.select_installation
+        )
+        self.select_button.pack(pady=5)
+
+        self.clear_button = ctk.CTkButton(
+            self,
+            text="Clear Installation",
+            state="disabled",
+            command=self.clear_selection
+        )
+        self.clear_button.pack(pady=5)
+
+        self.next_button = ctk.CTkButton(
+            self,
+            text = "Next",
+            state = "disabled",
+            command = self.go_to_next
+        )
+        self.next_button.pack(pady=5)
+
+        self.back_button = ctk.CTkButton(
+            self,
+            text="Back",
+            command=lambda: controller.show_frame(controller.step1_frame)
+        )
+        self.back_button.pack(pady=5)
+
+    def select_installation(self):
+        """ Prompts the user to select their Anaconda installion directory """
+        conda_directory = filedialog.askdirectory(title="Select your Anaconda Installation")
+
+        # If there is a directory
+        if conda_directory:
+            self.controller.conda_dir = conda_directory
+
+            self.info_label.configure(text=f" Selected Installation: {self.controller.conda_dir}")
+            self.next_button.configure(state="normal")
+            self.clear_button.configure(state="normal")
+
+            print(f"    [INFO] Selected Installation: {self.controller.conda_dir}")
+        else:
+            print("[ALERT] No installation selected.")
+
+    def clear_selection(self):
+        """ Clears the given Anaconda installation """
+        if self.controller.conda_dir:
+            self.controller.conda_dir = ""
+
+            self.info_label.configure(text="No installation selected")
+            self.clear_button.configure(state="disabled")
+            self.next_button.configure(state="disabled")
+
+            print("    [ALERT] Anaconda installation cleared!")
+        else:
+            print("    [ALERT] There is no Anaconda installation to clear")
+
+    def go_to_next(self):
+            try:
+                conda_exe = get_conda_exe(self.controller.conda_dir)
+                if conda_exe:
+                    self.controller.conda_exe = conda_exe
+                    try:
+                        self.controller.conda_envs = get_conda_envs(conda_exe)
+                        print(f"[INFO] Retrieved Conda environments: {self.controller.conda_envs}")
+                        self.controller.step3_frame.env_dropdown['values'] = self.controller.conda_envs
+                    except Exception as e:
+                        print(f"[ERROR] Encountered an error when retrieving Conda environments: {e}")
+            except Exception as e:
+                print(f"[ERROR] Failed to retrieve Anaconda executable: {e}")
+
+            self.controller.show_frame(self.controller.step3_frame)
+
+class Step3Frame(ctk.CTkFrame):
+    """ Step 3 of setting up the CTRL panel. User chooses their working virtual environment
 
     Args:
         ctk (CTkFrame): The base class for creating a CustomTkinter frame, providing the functionality 
@@ -107,11 +216,10 @@ class Step2Frame(ctk.CTkFrame):
 
         Args:
             parent (tk.Widget): The parent widget which the frame belongs to.
-            controller (MLAgentsApp): The application controller, used for navigating between frames
+            controller (MLAgentsCTRL): The application controller, used for navigating between frames
         """
         super().__init__(parent)
         self.controller = controller
-
         self.virtual_env = tk.StringVar()
 
         self.initialise_ui(controller)
@@ -120,8 +228,10 @@ class Step2Frame(ctk.CTkFrame):
         """ Initialises the UI components of this frame.
 
         Args:
-            controller (MLAgentsApp): The application's controller, used for navigating between frames.
+            controller (MLAgentsCTRL): The application's controller, used for navigating between frames.
         """
+        self.conda_envs = controller.conda_envs
+        
         self.greeting = ctk.CTkLabel(
             self,
             text="Select Virtual Environment",
@@ -129,33 +239,26 @@ class Step2Frame(ctk.CTkFrame):
         )
         self.greeting.pack(pady=10)
 
-        self.step2_label_instruction = ctk.CTkLabel(
+        self.info_label = ctk.CTkLabel(
             self, 
             text="Select a Conda environment from the list below",
             font=("Arial", 10)
         )
-        self.step2_label_instruction.pack(pady=5)
+        self.info_label.pack(pady=5)
 
-        conda_envs = get_conda_envs()
+        print(f"Populating combobox with environments: {self.conda_envs}")  # Debug list
+        self.env_dropdown = ttk.Combobox(
+            self,
+            values=[],
+            state="readonly",
+            textvariable=self.virtual_env
+        )
+        self.env_dropdown.set("Select Conda Environment")
+        self.env_dropdown.pack(pady=10)
 
-        if conda_envs:
-            self.env_dropdown = ttk.Combobox(
-                self,
-                values=conda_envs,
-                state="readonly",
-                textvariable=self.virtual_env
-            )
-            self.env_dropdown.set("Select Conda Environment")
-            self.env_dropdown.pack(pady=10)
-
-            # Bind selection event to enable Next button
-            self.env_dropdown.bind("<<ComboboxSelected>>", self.on_env_selected)
-        else:
-            env_dropdown = ctk.CTkLabel(
-                self,
-                text="No Conda environments found."
-            )
-            env_dropdown.pack(pady=10)
+        # Bind selection event to enable Next button
+        self.env_dropdown.bind("<<ComboboxSelected>>", self.on_env_selected)
+        self.env_dropdown.pack(pady=10)
 
         self.save_button = ctk.CTkButton(
             self,
@@ -168,11 +271,11 @@ class Step2Frame(ctk.CTkFrame):
         self.back_button = ctk.CTkButton(
             self,
             text="Back",
-            command=lambda: controller.show_frame(controller.step1_frame)
+            command=lambda: controller.show_frame(controller.step2_frame)
         )
         self.back_button.pack(pady=5)
 
-    def on_env_selected(self):
+    def on_env_selected(self, event=None):
         """ Enables the save button to be clickable when a virtual environment is selected. """
         selected = self.virtual_env.get()
         if selected and selected != "Select Conda Environment":
@@ -200,7 +303,7 @@ class MainMenu(ctk.CTkFrame):
 
         Args:
             parent (tk.Widget): The parent widget which the frame belongs to.
-            controller (MLAgentsApp): The application controller, used for navigating between frames
+            controller (MLAgentsCTRL): The application controller, used for navigating between frames
         """
         super().__init__(parent)
         self.controller = controller
@@ -212,7 +315,7 @@ class MainMenu(ctk.CTkFrame):
         """ Initialises the UI components of this frame.
 
         Args:
-            controller (MLAgentsApp): The application's controller, used for navigating between frames.
+            controller (MLAgentsCTRL): The application's controller, used for navigating between frames.
         """
         self.greeting = ctk.CTkLabel(
             self,
@@ -230,7 +333,7 @@ class MainMenu(ctk.CTkFrame):
         self.back_button = ctk.CTkButton(
             self,
             text="Back",
-            command=lambda: controller.show_frame(controller.step2_frame)
+            command=lambda: controller.show_frame(controller.step3_frame)
         )
         self.back_button.pack(pady=5)
 
