@@ -1,7 +1,7 @@
 import tkinter as tk
 import customtkinter as ctk
 from tkinter import filedialog, ttk
-from utils import get_conda_envs, begin_training, save_settings, get_conda_exe
+from Utils.utils import get_conda_envs, save_settings, get_conda_exe
 
 class Step1Frame(ctk.CTkFrame):
     """ Step 1 of setting up the CTRL panel. User chooses their working directory (their ML-Agents clone)
@@ -246,7 +246,6 @@ class Step3Frame(ctk.CTkFrame):
         )
         self.info_label.pack(pady=5)
 
-        print(f"Populating combobox with environments: {self.conda_envs}")  # Debug list
         self.env_dropdown = ttk.Combobox(
             self,
             values=[],
@@ -290,156 +289,3 @@ class Step3Frame(ctk.CTkFrame):
 
         # Navigate to next frame
         self.controller.show_frame(self.controller.main_menu)
-
-class MainMenu(ctk.CTkFrame):
-    """ The main menu of the application.
-
-    Args:
-        ctk (CTkFrame): The base class for creating a CustomTkinter frame, providing the functionality 
-        to organize and manage widgets within a frame in the application.
-    """
-    def __init__(self, parent, controller):
-        """ Initialises the frame and its components
-
-        Args:
-            parent (tk.Widget): The parent widget which the frame belongs to.
-            controller (MLAgentsCTRL): The application controller, used for navigating between frames
-        """
-        super().__init__(parent)
-        self.controller = controller
-        self.selected_config = ""
-
-        self.initialise_ui(controller)
-        
-    def initialise_ui(self, controller):
-        """ Initialises the UI components of this frame.
-
-        Args:
-            controller (MLAgentsCTRL): The application's controller, used for navigating between frames.
-        """
-        self.greeting = ctk.CTkLabel(
-            self,
-            text="ML-Agents Control Panel",
-            font=("Arial", 14)
-        )
-
-        self.start_button = ctk.CTkButton(
-            self,
-            text = "Start New Training Session",
-            command = self.training_setup
-        )
-        self.start_button.pack(pady=5)
-
-        self.back_button = ctk.CTkButton(
-            self,
-            text="Back",
-            command=lambda: controller.show_frame(controller.step3_frame)
-        )
-        self.back_button.pack(pady=5)
-
-    def training_setup(self):
-        """ Creates a popup window where the user can enter a name for the training session and select a config file"""
-        popup = ctk.CTkToplevel(self)
-        popup.title("Enter Run ID")
-
-        label1 = ctk.CTkLabel(
-            popup,
-            text="Enter the Run ID for this training session",
-            font=("Arial", 12)
-        )
-        label1.pack(pady=10)
-
-        id_entry = ctk.CTkEntry(
-            popup,
-            width=250
-        )
-        id_entry.pack(pady=10)
-
-        label2 = ctk.CTkLabel(
-            popup,
-            text="Select the configuration file for this training session",
-            font=("Arial", 12)
-        )
-
-        label2.pack(pady=10)
-
-        label3 = ctk.CTkLabel(
-            popup,
-            text="No config file selected",
-            font=("Arial", 12)
-        )
-
-        label3.pack(pady=10)
-
-        def select_config_file():
-            """ Prompts the user to select a config.yaml file"""
-            # Select config prompt
-            config = filedialog.askopenfilename(title="Select a Config file")
-
-            # If there is a config file
-            if config:
-                self.selected_config = config
-                label3.configure(text=f"Selected Config File: {self.selected_config}")
-                start_button.configure(state="normal")
-                clear_button.configure(state="normal")
-                print(f"[INFO] Selected Config File: {self.selected_config}")
-            else:
-                print("[ALERT] No config file selected.")
-
-        select_button = ctk.CTkButton(
-            popup,
-            text="Select Config File",
-            command=select_config_file
-        )
-        select_button.pack(pady=5)
-
-        def clear_selection():
-            """ Clears the selected config file """
-            if self.selected_config:
-                self.selected_config = ""
-                label3.configure(text="No config file selected")
-                clear_button.configure(state="disabled")
-                start_button.configure(state="disabled")
-
-                print("    [ALERT] Selected config file cleared!")
-            else:
-                print("    [ALERT] There is no config file to clear")
-
-        clear_button = ctk.CTkButton(
-            popup,
-            text="Clear Config File",
-            state="disabled",
-            command=clear_selection
-        )
-        clear_button.pack(pady=5)
-
-        def on_start():
-            """ Executes when the user presses the begin button."""
-            try:
-                run_id = id_entry.get() # Retrieve user input
-                if not run_id: # Validate the input
-                    raise ValueError("Run ID is empty. Please provide a valid Run ID.")
-                
-                # Close the popup after processing
-                if popup: # Ensure popup exists before destroying it
-                    popup.destroy()
-
-                # Begin training
-                begin_training(self.controller, run_id, self.selected_config)
-
-            except ValueError as ve:
-                print(f"ValueError: {ve}")
-
-            except AttributeError as ae:
-                print(f"AttributeError: {ae}")
-
-            except Exception as e:
-                print(f"An unexpected error occurred: {e}")
-
-        start_button = ctk.CTkButton(
-            popup,
-            text="Begin",
-            state="disabled",
-            command=on_start
-        )
-        start_button.pack(pady=10)
