@@ -1,4 +1,4 @@
-from Utils.utils import logging
+from utils.utils import logging
 
 import tkinter as tk
 import subprocess

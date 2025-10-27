@@ -2,9 +2,6 @@ import tkinter as tk
 from tkinter import messagebox
 import subprocess
 import os
-import threading
-import signal
-import select
 import json
 import sys
 import logging

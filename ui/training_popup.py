@@ -1,5 +1,5 @@
-from Utils.utils import logging
-from Utils.process_utils import initialise_process, end_process, stream_process_output, stop_event
+from utils.utils import logging
+from utils.process_utils import initialise_process, end_process, stream_process_output, stop_event
 
 import tkinter as tk
 from tkinter import messagebox, filedialog, scrolledtext
@@ -80,7 +80,11 @@ class TrainingPopup(ctk.CTkToplevel):
     def select_config_file(self):
         """ Prompts the user to select a config.yaml file"""
         # Select config prompt
-        config = filedialog.askopenfilename(title="Select a Config file")
+        config = filedialog.askopenfilename(
+            initialdir=f"{self.controller.mlagents_dir}/config",
+            title="Select a Config file",
+            filetypes=(("YAML files", "*.yaml"),)
+        )
 
         # If there is a config file
         if config:

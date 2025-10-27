@@ -1,6 +1,6 @@
-from Frames.setup_frames import Step1Frame, Step2Frame, Step3Frame
-from Frames.main_frames import MainMenuFrame
-from Utils.utils import load_settings, get_resource_path, logging, print_variables
+from ui.setup import Step1Frame, Step2Frame, Step3Frame
+from ui.main_menu import MainMenuFrame
+from utils.utils import load_settings, get_resource_path, logging, print_variables
 
 import tkinter as tk
 import customtkinter as ctk
@@ -31,8 +31,8 @@ class MLAgentsCTRL(ctk.CTk):
         self.title("ML-Agents CTRL")
 
         # Use the get_resource_path function to get the correct icon path
-        icon_path = get_resource_path("Images/icon.png")
-        self.iconphoto(False, PhotoImage(file=icon_path))
+        #icon_path = get_resource_path("images/icon.png")
+        #self.iconphoto(False, PhotoImage(file=icon_path))
 
         # self.geometry("500x400")
 
@@ -40,14 +40,14 @@ class MLAgentsCTRL(ctk.CTk):
         """ Initialises application variables. """
         try:
             logging.debug("Initialising environment configuration.")
-            self.mlagents_dir = None
-            self.conda_dir = None
+            self.mlagents_dir = None # Directiry of the user's ML-Agents installation
+            self.conda_dir = None # Diretory of the user's Anaconda installation
 
-            self.conda_exe = None
-            self.conda_envs = []
-            self.virtual_env = None
+            self.conda_exe = None # Path to the Anaconda installation
+            self.conda_envs = [] # List of avaliable virtual environments from Conda
+            self.virtual_env = None # User's selected virtual environment
 
-            self.current_training_process = None
+            self.current_training_process = None # The process of an ongoing training session
         except Exception as e:
             logging.error(f"Failed to initalise variables: {e}")
 
@@ -74,13 +74,16 @@ class MLAgentsCTRL(ctk.CTk):
 
     def handle_settings_file(self):
         """" Handles the loading of settings from the settings.json file """
-        if os.path.exists(SETTINGS_FILE): # Show the main menu if settings file exists
-            logging.info("Settings file found. Skipping setup process.")
-            load_settings(self)
-            self.show_frame(self.main_menu)
-        else: # Proceed to setup if settings file does not exist
-            logging.info("No settings file found. Proceeding to environment setup.")
-            self.show_frame(self.step1_frame)
+        try:
+            if os.path.exists(SETTINGS_FILE): # Show the main menu if settings file exists
+                logging.info("Settings file found. Skipping setup process.")
+                load_settings(self)
+                self.show_frame(self.main_menu)
+            else: # Proceed to setup if settings file does not exist
+                logging.info("No settings file found. Proceeding to environment setup.")
+                self.show_frame(self.step1_frame)
+        except Exception as e:
+            logging.error(f"Encountered an issue when trying to retrieve user's previous settings: {e}")
 
     def show_frame(self, frame):
         """ Handles switching between frames """

@@ -1,6 +1,6 @@
 import tkinter as tk
 import customtkinter as ctk
-from Utils.training_utils import TrainingPopup
+from ui.training_popup import TrainingPopup
 
 class MainMenuFrame(ctk.CTkFrame):
     """ The main menu of the application.
@@ -18,11 +18,10 @@ class MainMenuFrame(ctk.CTkFrame):
         """
         super().__init__(parent)
         self.controller = controller
-        self.selected_config = ""
 
-        self.initialise_ui(controller)
+        self.initialise_ui()
         
-    def initialise_ui(self, controller):
+    def initialise_ui(self):
         """ Initialises the UI components of this frame.
 
         Args:
@@ -44,7 +43,7 @@ class MainMenuFrame(ctk.CTkFrame):
         self.back_button = ctk.CTkButton(
             self,
             text="Back",
-            command=lambda: controller.show_frame(controller.step3_frame)
+            command=lambda: self.controller.show_frame(self.controller.step3_frame)
         )
         self.back_button.pack(pady=5)
 
